@@ -1,0 +1,15 @@
+# vars/platform/darwin.yml - macOS-specific variables
+#
+# reader-sync only runs on macOS (requires launchd)
+
+---
+# launchd paths
+launchd_plist_dir: "{{ ansible_env.HOME }}/Library/LaunchAgents"
+launchd_plist_path: "{{ launchd_plist_dir }}/{{ launchd_label }}.plist"
+
+# Homebrew paths (for jq, calibre)
+# Apple Silicon uses /opt/homebrew, Intel uses /usr/local
+homebrew_prefix: "{{ '/opt/homebrew' if ansible_machine == 'arm64' else '/usr/local' }}"
+
+# PATH for launchd environment (includes homebrew)
+launchd_path: "{{ homebrew_prefix }}/bin:/usr/local/bin:/usr/bin:/bin"

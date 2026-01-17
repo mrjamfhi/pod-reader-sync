@@ -1,0 +1,115 @@
+# upgrade.yml - Upgrade reader-sync to latest version
+#
+# Usage:
+#   ansible-playbook upgrade.yml
+#   ansible-playbook upgrade.yml -e "git_branch=develop"
+#   ansible-playbook upgrade.yml --check --diff
+
+---
+- name: Upgrade reader-sync
+  hosts: localhost
+  connection: local
+  gather_facts: yes
+
+  pre_tasks:
+    - name: Verify macOS
+      ansible.builtin.fail:
+        msg: "reader-sync only supports macOS (requires launchd)"
+      when: ansible_system != "Darwin"
+
+    - name: Load default configuration
+      ansible.builtin.include_vars:
+        file: vars/default.yml
+
+    - name: Load platform-specific configuration
+      ansible.builtin.include_vars:
+        file: vars/platform/darwin.yml
+
+  tasks:
+    # =========================================================================
+    # Pre-upgrade Checks
+    # =========================================================================
+
+    - name: Check if reader-sync is installed
+      ansible.builtin.stat:
+        path: "{{ install_path }}/reader-sync.sh"
+      register: install_check
+
+    - name: Fail if not installed
+      ansible.builtin.fail:
+        msg: "reader-sync not found at {{ install_path }}. Run install.yml first."
+      when: not install_check.stat.exists
+
+    - name: Get current commit
+      ansible.builtin.command: git rev-parse --short HEAD
+      args:
+        chdir: "{{ install_path }}"
+      register: current_commit
+      changed_when: false
+
+    - name: Display current version
+      ansible.builtin.debug:
+        msg: "Current commit: {{ current_commit.stdout }}"
+
+    # =========================================================================
+    # Pull Latest
+    # =========================================================================
+
+    - name: Pull latest changes
+      ansible.builtin.git:
+        repo: "{{ git_repo }}"
+        dest: "{{ install_path }}"
+        version: "{{ git_branch }}"
+        update: yes
+      register: git_pull
+
+    - name: Get new commit
+      ansible.builtin.command: git rev-parse --short HEAD
+      args:
+        chdir: "{{ install_path }}"
+      register: new_commit
+      changed_when: false
+
+    - name: Check if upgrade occurred
+      ansible.builtin.set_fact:
+        upgrade_needed: "{{ current_commit.stdout != new_commit.stdout }}"
+
+    - name: No upgrade needed
+      ansible.builtin.debug:
+        msg: "Already running latest version ({{ new_commit.stdout }})"
+      when: not upgrade_needed
+
+    # =========================================================================
+    # Reload launchd
+    # =========================================================================
+
+    - name: Unload launchd job
+      ansible.builtin.command: launchctl unload {{ launchd_plist_path }}
+      when: upgrade_needed
+      changed_when: true
+      failed_when: false
+
+    - name: Load launchd job
+      ansible.builtin.command: launchctl load {{ launchd_plist_path }}
+      when: upgrade_needed
+      changed_when: true
+
+    # =========================================================================
+    # Summary
+    # =========================================================================
+
+    - name: Upgrade complete
+      ansible.builtin.debug:
+        msg: |
+          
+          ═══════════════════════════════════════════════════════════
+          ✅ reader-sync upgraded successfully
+          ═══════════════════════════════════════════════════════════
+          
+          Previous: {{ current_commit.stdout }}
+          Current:  {{ new_commit.stdout }}
+          
+          launchd has been reloaded.
+          
+          ═══════════════════════════════════════════════════════════
+      when: upgrade_needed

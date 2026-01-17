@@ -1,0 +1,196 @@
+# status.yml - Check reader-sync status on this machine
+#
+# Usage:
+#   ansible-playbook status.yml
+
+---
+- name: Check reader-sync Status
+  hosts: localhost
+  connection: local
+  gather_facts: yes
+
+  pre_tasks:
+    - name: Verify macOS
+      ansible.builtin.fail:
+        msg: "reader-sync only supports macOS"
+      when: ansible_system != "Darwin"
+
+    - name: Load default configuration
+      ansible.builtin.include_vars:
+        file: vars/default.yml
+
+    - name: Load platform-specific configuration
+      ansible.builtin.include_vars:
+        file: vars/platform/darwin.yml
+
+  tasks:
+    # =========================================================================
+    # Repository Status
+    # =========================================================================
+
+    - name: Check if repo exists
+      ansible.builtin.stat:
+        path: "{{ install_path }}"
+      register: repo_stat
+
+    - name: Get git commit
+      ansible.builtin.command: git rev-parse --short HEAD
+      args:
+        chdir: "{{ install_path }}"
+      register: git_commit
+      changed_when: false
+      failed_when: false
+      when: repo_stat.stat.exists
+
+    - name: Get git branch
+      ansible.builtin.command: git rev-parse --abbrev-ref HEAD
+      args:
+        chdir: "{{ install_path }}"
+      register: git_branch_current
+      changed_when: false
+      failed_when: false
+      when: repo_stat.stat.exists
+
+    # =========================================================================
+    # Configuration Status
+    # =========================================================================
+
+    - name: Check config.json
+      ansible.builtin.stat:
+        path: "{{ install_path }}/config.json"
+      register: config_stat
+      when: repo_stat.stat.exists
+
+    - name: Check devices.json
+      ansible.builtin.stat:
+        path: "{{ install_path }}/devices.json"
+      register: devices_stat
+      when: repo_stat.stat.exists
+
+    - name: Count trusted devices
+      ansible.builtin.command: jq 'keys | length' {{ install_path }}/devices.json
+      register: device_count
+      changed_when: false
+      failed_when: false
+      when:
+        - repo_stat.stat.exists
+        - devices_stat.stat.exists | default(false)
+
+    # =========================================================================
+    # launchd Status
+    # =========================================================================
+
+    - name: Check launchd plist
+      ansible.builtin.stat:
+        path: "{{ launchd_plist_path }}"
+      register: plist_stat
+
+    - name: Check if launchd job is loaded
+      ansible.builtin.shell: launchctl list | grep -q "{{ launchd_label }}"
+      register: launchd_loaded
+      changed_when: false
+      failed_when: false
+
+    # =========================================================================
+    # Dependencies Status
+    # =========================================================================
+
+    - name: Check jq
+      ansible.builtin.command: which jq
+      register: jq_check
+      changed_when: false
+      failed_when: false
+
+    - name: Check Calibre
+      ansible.builtin.command: which ebook-convert
+      register: calibre_check
+      changed_when: false
+      failed_when: false
+
+    # =========================================================================
+    # API Connectivity
+    # =========================================================================
+
+    - name: Check prod API health
+      ansible.builtin.uri:
+        url: "{{ prod_api_url }}/health"
+        method: GET
+        timeout: 5
+      register: prod_api_check
+      failed_when: false
+
+    - name: Check dev API health
+      ansible.builtin.uri:
+        url: "{{ dev_api_url }}/health"
+        method: GET
+        timeout: 5
+      register: dev_api_check
+      failed_when: false
+
+    # =========================================================================
+    # SMB Share Status
+    # =========================================================================
+
+    - name: Check SMB mount point
+      ansible.builtin.stat:
+        path: "{{ smb_mount_point }}/prod"
+      register: smb_check
+      when: smb_enabled | bool
+
+    # =========================================================================
+    # Status Report
+    # =========================================================================
+
+    - name: Display status report
+      ansible.builtin.debug:
+        msg: |
+          
+          ═══════════════════════════════════════════════════════════
+          reader-sync Status Report
+          ═══════════════════════════════════════════════════════════
+          
+          Platform:       {{ ansible_system }} ({{ ansible_distribution | default('macOS') }})
+          
+          Installation:
+            Path:         {{ install_path }}
+            Installed:    {{ '✅ Yes' if repo_stat.stat.exists else '❌ No' }}
+          {% if repo_stat.stat.exists %}
+            Branch:       {{ git_branch_current.stdout | default('unknown') }}
+            Commit:       {{ git_commit.stdout | default('unknown') }}
+          {% endif %}
+          
+          Configuration:
+          {% if repo_stat.stat.exists %}
+            config.json:  {{ '✅ Present' if config_stat.stat.exists else '❌ Missing' }}
+            devices.json: {{ '✅ Present' if devices_stat.stat.exists | default(false) else '❌ Missing' }}
+            Trusted devices: {{ device_count.stdout | default('0') }}
+          {% else %}
+            Not installed
+          {% endif %}
+          
+          launchd:
+            Plist:        {{ '✅ Present' if plist_stat.stat.exists else '❌ Missing' }}
+            Loaded:       {{ '✅ Yes' if launchd_loaded.rc == 0 else '❌ No' }}
+          
+          Dependencies:
+            jq:           {{ '✅ Installed' if jq_check.rc == 0 else '❌ Missing' }}
+            Calibre:      {{ '✅ Installed' if calibre_check.rc == 0 else '⚠️  Missing (Kindle disabled)' }}
+          
+          API Connectivity:
+            Prod API:     {{ '✅ ' + prod_api_url if prod_api_check.status | default(0) == 200 else '❌ ' + prod_api_url }}
+            Dev API:      {{ '✅ ' + dev_api_url if dev_api_check.status | default(0) == 200 else '❌ ' + dev_api_url }}
+          
+          SMB Share:
+            Enabled:      {{ '✅ Yes' if smb_enabled else '❌ No' }}
+          {% if smb_enabled %}
+            Mount point:  {{ smb_mount_point }}
+            Mounted:      {{ '✅ Yes' if smb_check.stat.exists | default(false) else '❌ No' }}
+          {% endif %}
+          
+          ═══════════════════════════════════════════════════════════
+          
+          Commands:
+            Manual sync:  {{ install_path }}/reader-sync.sh --env=prod
+            View logs:    tail -f {{ install_path }}/sync.log
+          
+          ═══════════════════════════════════════════════════════════

@@ -1,0 +1,109 @@
+# uninstall.yml - Remove reader-sync from this machine
+#
+# Usage:
+#   ansible-playbook uninstall.yml                        # Unload launchd, keep repo
+#   ansible-playbook uninstall.yml -e "remove_repo=true"  # Remove everything
+#   ansible-playbook uninstall.yml --check --diff
+
+---
+- name: Uninstall reader-sync
+  hosts: localhost
+  connection: local
+  gather_facts: yes
+
+  vars:
+    remove_repo: false
+
+  pre_tasks:
+    - name: Verify macOS
+      ansible.builtin.fail:
+        msg: "reader-sync only supports macOS"
+      when: ansible_system != "Darwin"
+
+    - name: Load default configuration
+      ansible.builtin.include_vars:
+        file: vars/default.yml
+
+    - name: Load platform-specific configuration
+      ansible.builtin.include_vars:
+        file: vars/platform/darwin.yml
+
+    - name: Display uninstall options
+      ansible.builtin.debug:
+        msg: |
+          Uninstalling reader-sync
+          Remove repo: {{ remove_repo }}
+          Install path: {{ install_path }}
+
+  tasks:
+    # =========================================================================
+    # Unload launchd
+    # =========================================================================
+
+    - name: Check if launchd plist exists
+      ansible.builtin.stat:
+        path: "{{ launchd_plist_path }}"
+      register: plist_stat
+
+    - name: Check if launchd job is loaded
+      ansible.builtin.command: launchctl list
+      register: launchctl_list
+      changed_when: false
+      when: plist_stat.stat.exists
+
+    - name: Unload launchd job
+      ansible.builtin.command: launchctl unload {{ launchd_plist_path }}
+      when:
+        - plist_stat.stat.exists
+        - launchd_label in launchctl_list.stdout
+      changed_when: true
+      failed_when: false
+
+    - name: Remove launchd plist
+      ansible.builtin.file:
+        path: "{{ launchd_plist_path }}"
+        state: absent
+
+    # =========================================================================
+    # Remove Repository (Optional)
+    # =========================================================================
+
+    - name: Check if repo exists
+      ansible.builtin.stat:
+        path: "{{ install_path }}"
+      register: repo_stat
+
+    - name: Remove repository
+      ansible.builtin.file:
+        path: "{{ install_path }}"
+        state: absent
+      when:
+        - remove_repo | bool
+        - repo_stat.stat.exists
+
+    - name: Note about keeping repo
+      ansible.builtin.debug:
+        msg: |
+          Repository kept at {{ install_path }}
+          Contains: config.json, devices.json, sync.log
+          Use -e "remove_repo=true" to remove everything.
+      when:
+        - not (remove_repo | bool)
+        - repo_stat.stat.exists
+
+    # =========================================================================
+    # Summary
+    # =========================================================================
+
+    - name: Uninstall complete
+      ansible.builtin.debug:
+        msg: |
+          
+          ═══════════════════════════════════════════════════════════
+          ✅ reader-sync uninstalled
+          ═══════════════════════════════════════════════════════════
+          
+          launchd:    Unloaded and removed
+          Repository: {{ 'Removed' if (remove_repo | bool) else 'Kept at ' + install_path }}
+          
+          ═══════════════════════════════════════════════════════════

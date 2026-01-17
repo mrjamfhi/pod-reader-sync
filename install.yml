@@ -1,0 +1,201 @@
+# install.yml - Install reader-sync on this machine
+#
+# Usage:
+#   ansible-playbook install.yml
+#   ansible-playbook install.yml -e "git_repo=git@github.com:myuser/reader-sync.git"
+#   ansible-playbook install.yml -e "prod_api_url=http://192.168.1.100:8000"
+#   ansible-playbook install.yml --check --diff
+
+---
+- name: Install reader-sync
+  hosts: localhost
+  connection: local
+  gather_facts: yes
+
+  pre_tasks:
+    - name: Verify macOS
+      ansible.builtin.fail:
+        msg: "reader-sync only supports macOS (requires launchd)"
+      when: ansible_system != "Darwin"
+
+    - name: Load default configuration
+      ansible.builtin.include_vars:
+        file: vars/default.yml
+
+    - name: Load platform-specific configuration
+      ansible.builtin.include_vars:
+        file: vars/platform/darwin.yml
+
+    - name: Display installation target
+      ansible.builtin.debug:
+        msg: |
+          Installing reader-sync
+          Platform: {{ ansible_system }} ({{ ansible_distribution | default('macOS') }})
+          Repository: {{ git_repo }}
+          Branch: {{ git_branch }}
+          Install path: {{ install_path }}
+
+  tasks:
+    # =========================================================================
+    # Pre-flight Checks
+    # =========================================================================
+
+    - name: Check if Git is available
+      ansible.builtin.command: git --version
+      register: git_check
+      changed_when: false
+      failed_when: false
+
+    - name: Fail if Git not installed
+      ansible.builtin.fail:
+        msg: "Git is not installed. Please install Git."
+      when: git_check.rc != 0
+
+    - name: Check if jq is available
+      ansible.builtin.command: which jq
+      register: jq_check
+      changed_when: false
+      failed_when: false
+
+    - name: Fail if jq not installed
+      ansible.builtin.fail:
+        msg: |
+          jq is not installed.
+          Install with: brew install jq
+      when: jq_check.rc != 0
+
+    - name: Check if Calibre is available
+      ansible.builtin.command: which ebook-convert
+      register: calibre_check
+      changed_when: false
+      failed_when: false
+
+    - name: Note about Calibre
+      ansible.builtin.debug:
+        msg: "⚠️  Calibre not found - Kindle AZW3 conversion will be unavailable. Install with: brew install --cask calibre"
+      when: calibre_check.rc != 0
+
+    # =========================================================================
+    # Clone Repository
+    # =========================================================================
+
+    - name: Create install directory parent
+      ansible.builtin.file:
+        path: "{{ install_path | dirname }}"
+        state: directory
+        mode: '0755'
+
+    - name: Clone reader-sync repository
+      ansible.builtin.git:
+        repo: "{{ git_repo }}"
+        dest: "{{ install_path }}"
+        version: "{{ git_branch }}"
+        update: yes
+      register: git_clone
+
+    - name: Make reader-sync.sh executable
+      ansible.builtin.file:
+        path: "{{ install_path }}/reader-sync.sh"
+        mode: '0755'
+
+    # =========================================================================
+    # Configuration
+    # =========================================================================
+
+    - name: Check if config.json exists
+      ansible.builtin.stat:
+        path: "{{ install_path }}/config.json"
+      register: config_stat
+
+    - name: Generate config.json from template
+      ansible.builtin.template:
+        src: templates/config.json.j2
+        dest: "{{ install_path }}/config.json"
+        mode: '0644'
+      when: not config_stat.stat.exists
+
+    - name: Note about existing config
+      ansible.builtin.debug:
+        msg: "config.json already exists, not overwriting. Delete it to regenerate from template."
+      when: config_stat.stat.exists
+
+    - name: Check if devices.json exists
+      ansible.builtin.stat:
+        path: "{{ install_path }}/devices.json"
+      register: devices_stat
+
+    - name: Create empty devices.json
+      ansible.builtin.copy:
+        content: "{}"
+        dest: "{{ install_path }}/devices.json"
+        mode: '0644'
+      when: not devices_stat.stat.exists
+
+    # =========================================================================
+    # launchd Setup
+    # =========================================================================
+
+    - name: Create LaunchAgents directory
+      ansible.builtin.file:
+        path: "{{ launchd_plist_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Check if launchd job is loaded
+      ansible.builtin.command: launchctl list
+      register: launchctl_list
+      changed_when: false
+
+    - name: Unload existing launchd job
+      ansible.builtin.command: launchctl unload {{ launchd_plist_path }}
+      when: launchd_label in launchctl_list.stdout
+      changed_when: true
+      failed_when: false
+
+    - name: Generate launchd plist from template
+      ansible.builtin.template:
+        src: templates/com.reader-sync.plist.j2
+        dest: "{{ launchd_plist_path }}"
+        mode: '0644'
+
+    - name: Load launchd job
+      ansible.builtin.command: launchctl load {{ launchd_plist_path }}
+      changed_when: true
+
+    # =========================================================================
+    # Verification
+    # =========================================================================
+
+    - name: Verify launchd job is loaded
+      ansible.builtin.command: launchctl list
+      register: launchctl_verify
+      changed_when: false
+      failed_when: launchd_label not in launchctl_verify.stdout
+
+    - name: Installation complete
+      ansible.builtin.debug:
+        msg: |
+          
+          ═══════════════════════════════════════════════════════════
+          ✅ reader-sync installed successfully
+          ═══════════════════════════════════════════════════════════
+          
+          Install path:   {{ install_path }}
+          launchd plist:  {{ launchd_plist_path }}
+          
+          The script will run automatically when an e-reader is connected.
+          
+          First-time setup:
+            1. Connect your e-reader
+            2. Trust the device by running manually:
+               {{ install_path }}/reader-sync.sh --env=prod
+          
+          Manual commands:
+            {{ install_path }}/reader-sync.sh --env=prod   # Sync to production
+            {{ install_path }}/reader-sync.sh --env=dev    # Sync to development
+          
+          View logs:
+            tail -f {{ install_path }}/sync.log
+            tail -f {{ install_path }}/launchd-stdout.log
+          
+          ═══════════════════════════════════════════════════════════

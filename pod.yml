@@ -1,0 +1,65 @@
+# pod.yml - Pod manifest for reader-sync
+#
+# This file describes the pod for documentation and future automation.
+# A VM manager can parse this to understand what the pod provides.
+
+---
+name: reader-sync
+version: "1.0.0"
+description: |
+  Automatic e-reader synchronization for the Personal Knowledge System.
+  Detects Kindle/PocketBook devices, imports highlights, generates newspapers.
+
+# What this pod provides
+provides:
+  services:
+    - name: reader-sync
+      type: launchd-agent
+      description: Watches /Volumes for e-reader connections
+
+# What this pod requires
+requires:
+  - git
+  - jq
+  - launchd (macOS only)
+  - network access to worker-celery API
+
+# Platform support
+platforms:
+  - macos
+
+# Default configuration
+defaults:
+  GIT_REPO: "git@github.com:YOUR_USERNAME/reader-sync.git"
+  GIT_BRANCH: "main"
+  INSTALL_PATH: "~/repos/reader-sync"
+  PROD_API_URL: "http://synology:8000"
+  DEV_API_URL: "http://localhost:8000"
+
+# Playbooks provided
+playbooks:
+  install: "Clone repo, configure, install launchd agent"
+  upgrade: "Pull latest and reload launchd"
+  uninstall: "Unload launchd and optionally remove repo"
+  status: "Check installation and launchd status"
+
+# Dependencies
+dependencies:
+  - name: worker-celery
+    type: service
+    optional: false
+    description: "Requires worker-celery API for highlight import and newspaper generation"
+  - name: calibre
+    type: application
+    optional: true
+    description: "Required for Kindle AZW3 conversion"
+
+# Tags for categorisation
+tags:
+  - ereader
+  - kindle
+  - pocketbook
+  - highlights
+  - sync
+  - launchd
+  - macos
