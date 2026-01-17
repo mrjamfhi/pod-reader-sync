@@ -1,14 +1,37 @@
-# vars/default.yml - Default configuration for reader-sync
+# vars/default.yml - Default configuration for reader-sync pod
 #
-# Override with: ansible-playbook install.yml -e "variable=value"
+# These are sensible defaults for standalone use.
+# In a GitOps setup, these values are overridden by vm-manager:
+#
+#   vm-manager/
+#   └── group_vars/
+#       ├── all.yml         ← Global overrides (smb_share_url, etc.)
+#       └── macbook.yml     ← Host-specific overrides
+#
+# Override via command line:
+#   ansible-playbook install.yml -e "prod_api_url=http://192.168.1.100:8000"
 
 ---
+# =============================================================================
+# Deployment Configuration
+# =============================================================================
+# These control WHERE and HOW reader-sync is installed.
+
 # Git repository
-git_repo: "git@github.com:mrjamfhi/reader-sync.git"
+git_repo: "git@github.com:YOUR_USERNAME/reader-sync.git"
 git_branch: "main"
 
-# Installation path
+# Installation path on target machine
 install_path: "{{ ansible_env.HOME }}/repos/reader-sync"
+
+# launchd service label
+launchd_label: "com.reader-sync"
+
+# =============================================================================
+# Application Configuration
+# =============================================================================
+# These are templated into config.json for the reader-sync application.
+# In GitOps, these come from vm-manager group_vars.
 
 # Environment-specific API URLs
 prod_api_url: "http://synology:8000"
@@ -20,7 +43,7 @@ prod_newspaper_dir: "/Volumes/data/prod/publications"
 dev_input_dir: "{{ install_path }}/../worker-celery/input"
 dev_newspaper_dir: "{{ install_path }}/../worker-celery/data/dev/publications"
 
-# SMB share configuration (for auto-mounting network shares)
+# SMB share configuration (for auto-mounting network shares on macOS)
 smb_enabled: true
 smb_share_url: "smb://synology/data"
 smb_mount_point: "/Volumes/data"
@@ -29,6 +52,3 @@ smb_mount_point: "/Volumes/data"
 poll_interval: 2
 poll_timeout: 900
 auto_eject: true
-
-# launchd configuration
-launchd_label: "com.reader-sync"

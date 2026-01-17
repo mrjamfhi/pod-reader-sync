@@ -1,0 +1,22 @@
+{
+    "environments": {
+        "prod": {
+            "api_url": "{{ prod_api_url }}",
+            "input_dir": "{{ prod_input_dir }}",
+            "newspaper_output_dir": "{{ prod_newspaper_dir }}"
+        },
+        "dev": {
+            "api_url": "{{ dev_api_url }}",
+            "input_dir": "{{ dev_input_dir }}",
+            "newspaper_output_dir": "{{ dev_newspaper_dir }}"
+        }
+    },
+    "smb_share": {
+        "enabled": {{ smb_enabled | to_json }},
+        "share_url": "{{ smb_share_url }}",
+        "mount_point": "{{ smb_mount_point }}"
+    },
+    "poll_interval": {{ poll_interval }},
+    "poll_timeout": {{ poll_timeout }},
+    "auto_eject": {{ auto_eject | to_json }}
+}

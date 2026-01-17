@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>{{ launchd_label }}</string>
+    
+    <key>ProgramArguments</key>
+    <array>
+        <string>{{ install_path }}/reader-sync.sh</string>
+    </array>
+    
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>AUTO_MODE</key>
+        <string>true</string>
+        <key>PATH</key>
+        <string>{{ launchd_path }}</string>
+    </dict>
+    
+    <key>WatchPaths</key>
+    <array>
+        <string>/Volumes</string>
+    </array>
+    
+    <key>StandardOutPath</key>
+    <string>{{ install_path }}/launchd-stdout.log</string>
+    
+    <key>StandardErrorPath</key>
+    <string>{{ install_path }}/launchd-stderr.log</string>
+    
+    <key>RunAtLoad</key>
+    <false/>
+</dict>
+</plist>
