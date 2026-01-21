@@ -18,11 +18,12 @@
 # These control WHERE and HOW reader-sync is installed.
 
 # Git repository
-git_repo: "git@github.com:YOUR_USERNAME/reader-sync.git"
+git_repo: "git@github.com:mrjamfhi/reader-sync.git"
 git_branch: "main"
 
-# Installation path on target machine
-install_path: "{{ ansible_env.HOME }}/repos/reader-sync"
+# Derived from playbook location: repos/pod-reader-sync → repos/reader-sync
+repos_base: "{{ playbook_dir | dirname }}"
+install_path: "{{ repos_base }}/reader-sync"
 
 # launchd service label
 launchd_label: "com.reader-sync"
@@ -34,14 +35,14 @@ launchd_label: "com.reader-sync"
 # In GitOps, these come from vm-manager group_vars.
 
 # Environment-specific API URLs
-prod_api_url: "http://synology:8000"
+prod_api_url: "http://cerere.jamfhi.com:8000"
 dev_api_url: "http://localhost:8000"
 
 # Environment-specific paths
 prod_input_dir: "/Volumes/data/prod/input"
 prod_newspaper_dir: "/Volumes/data/prod/publications"
-dev_input_dir: "{{ install_path }}/../worker-celery/input"
-dev_newspaper_dir: "{{ install_path }}/../worker-celery/data/dev/publications"
+dev_input_dir: "{{ repos_base }}/worker-celery/input"
+dev_newspaper_dir: "{{ repos_base }}/worker-celery/data/dev/publications"
 
 # SMB share configuration (for auto-mounting network shares on macOS)
 smb_enabled: true
