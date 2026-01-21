@@ -64,16 +64,21 @@
           Install with: brew install jq
       when: jq_check.rc != 0
 
-    - name: Check if Calibre is available
+    - name: Check if Calibre is in PATH
       ansible.builtin.command: which ebook-convert
-      register: calibre_check
+      register: calibre_path_check
       changed_when: false
       failed_when: false
+
+    - name: Check if Calibre standalone app exists
+      ansible.builtin.stat:
+        path: /Applications/calibre.app/Contents/MacOS/ebook-convert
+      register: calibre_app_check
 
     - name: Note about Calibre
       ansible.builtin.debug:
         msg: "⚠️  Calibre not found - Kindle AZW3 conversion will be unavailable. Install with: brew install --cask calibre"
-      when: calibre_check.rc != 0
+      when: calibre_path_check.rc != 0 and not calibre_app_check.stat.exists
 
     # =========================================================================
     # Clone Repository
