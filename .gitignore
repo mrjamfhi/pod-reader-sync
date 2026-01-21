@@ -1,0 +1,24 @@
+# Ansible
+*.retry
+
+# Python
+__pycache__/
+*.py[cod]
+.env
+venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Local overrides
+vars/local.yml
