@@ -39,17 +39,39 @@ prod_api_url: "http://cerere.jamfhi.com:8000"
 dev_api_url: "http://localhost:8000"
 
 # Environment-specific paths
+# Note: prod paths assume SMB shares are mounted:
+#   - /Volumes/data (for publications output)
+#   - /Volumes/input (for highlight file uploads)
 prod_input_dir: "/Volumes/input"
 prod_newspaper_dir: "/Volumes/data/prod/publications"
 dev_input_dir: "{{ repos_base }}/worker-celery/input"
 dev_newspaper_dir: "{{ repos_base }}/worker-celery/data/dev/publications"
 
-# SMB share configuration (for auto-mounting network shares on macOS)
-smb_enabled: true
-smb_share_url: "smb://synology/data"
-smb_mount_point: "/Volumes/data"
+# =============================================================================
+# SMB Share Configuration
+# =============================================================================
+# Auto-mounting network shares on macOS for prod environment.
+# reader-sync will attempt to mount these shares before syncing.
+#
+# To save credentials for automatic mounting:
+#   1. Open Finder
+#   2. Press Cmd+K
+#   3. Enter the share URL (e.g., smb://synology/data)
+#   4. Check "Remember this password in my keychain"
 
-# Sync behavior
+# Data share (publications, articles)
+smb_data_enabled: true
+smb_data_url: "smb://cerere/data"
+smb_data_mount: "/Volumes/data"
+
+# Input share (highlight files copied from devices)
+smb_input_enabled: true
+smb_input_url: "smb://cerere/input"
+smb_input_mount: "/Volumes/input"
+
+# =============================================================================
+# Sync Behavior
+# =============================================================================
 poll_interval: 2
 poll_timeout: 900
 auto_eject: true

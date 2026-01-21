@@ -11,10 +11,17 @@
             "newspaper_output_dir": "{{ dev_newspaper_dir }}"
         }
     },
-    "smb_share": {
-        "enabled": {{ smb_enabled | to_json }},
-        "share_url": "{{ smb_share_url }}",
-        "mount_point": "{{ smb_mount_point }}"
+    "smb_shares": {
+        "data": {
+            "enabled": {{ smb_data_enabled | to_json }},
+            "url": "{{ smb_data_url }}",
+            "mount_point": "{{ smb_data_mount }}"
+        },
+        "input": {
+            "enabled": {{ smb_input_enabled | to_json }},
+            "url": "{{ smb_input_url }}",
+            "mount_point": "{{ smb_input_mount }}"
+        }
     },
     "poll_interval": {{ poll_interval }},
     "poll_timeout": {{ poll_timeout }},
