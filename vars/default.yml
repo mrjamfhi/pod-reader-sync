@@ -39,7 +39,7 @@ prod_api_url: "http://cerere.jamfhi.com:8000"
 dev_api_url: "http://localhost:8000"
 
 # Environment-specific paths
-prod_input_dir: "/Volumes/data/prod/input"
+prod_input_dir: "/Volumes/input"
 prod_newspaper_dir: "/Volumes/data/prod/publications"
 dev_input_dir: "{{ repos_base }}/worker-celery/input"
 dev_newspaper_dir: "{{ repos_base }}/worker-celery/data/dev/publications"
