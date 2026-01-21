@@ -1,18 +1,16 @@
 # uninstall.yml - Remove reader-sync from this machine
 #
+# Unloads launchd, removes plist, deletes repo.
+# Fails if uncommitted changes exist.
+#
 # Usage:
-#   ansible-playbook uninstall.yml                        # Unload launchd, keep repo
-#   ansible-playbook uninstall.yml -e "remove_repo=true"  # Remove everything
-#   ansible-playbook uninstall.yml --check --diff
+#   ansible-playbook uninstall.yml
 
 ---
 - name: Uninstall reader-sync
   hosts: localhost
   connection: local
   gather_facts: yes
-
-  vars:
-    remove_repo: false
 
   pre_tasks:
     - name: Verify macOS
@@ -28,14 +26,44 @@
       ansible.builtin.include_vars:
         file: vars/platform/darwin.yml
 
-    - name: Display uninstall options
-      ansible.builtin.debug:
-        msg: |
-          Uninstalling reader-sync
-          Remove repo: {{ remove_repo }}
-          Install path: {{ install_path }}
-
   tasks:
+    - name: Check if repo exists
+      ansible.builtin.stat:
+        path: "{{ install_path }}/.git"
+      register: repo_stat
+
+    - name: Nothing to uninstall
+      ansible.builtin.debug:
+        msg: "No installation found at {{ install_path }}"
+      when: not repo_stat.stat.exists
+
+    - name: End if no repo
+      ansible.builtin.meta: end_play
+      when: not repo_stat.stat.exists
+
+    - name: Check for uncommitted changes
+      ansible.builtin.command: git status --porcelain
+      args:
+        chdir: "{{ install_path }}"
+      register: git_status
+      changed_when: false
+
+    - name: Fail if uncommitted changes
+      ansible.builtin.fail:
+        msg: |
+          
+          ═══════════════════════════════════════════════════════════
+          ⚠️  Cannot uninstall: uncommitted changes detected
+          ═══════════════════════════════════════════════════════════
+          
+          Commit or stash your changes first:
+            cd {{ install_path }}
+            git status
+            git stash  # or git commit
+          
+          ═══════════════════════════════════════════════════════════
+      when: git_status.stdout | length > 0
+
     # =========================================================================
     # Unload launchd
     # =========================================================================
@@ -65,35 +93,13 @@
         state: absent
 
     # =========================================================================
-    # Remove Repository (Optional)
+    # Remove Repository
     # =========================================================================
-
-    - name: Check if repo exists
-      ansible.builtin.stat:
-        path: "{{ install_path }}"
-      register: repo_stat
 
     - name: Remove repository
       ansible.builtin.file:
         path: "{{ install_path }}"
         state: absent
-      when:
-        - remove_repo | bool
-        - repo_stat.stat.exists
-
-    - name: Note about keeping repo
-      ansible.builtin.debug:
-        msg: |
-          Repository kept at {{ install_path }}
-          Contains: config.json, devices.json, sync.log
-          Use -e "remove_repo=true" to remove everything.
-      when:
-        - not (remove_repo | bool)
-        - repo_stat.stat.exists
-
-    # =========================================================================
-    # Summary
-    # =========================================================================
 
     - name: Uninstall complete
       ansible.builtin.debug:
@@ -103,7 +109,10 @@
           ✅ reader-sync uninstalled
           ═══════════════════════════════════════════════════════════
           
-          launchd:    Unloaded and removed
-          Repository: {{ 'Removed' if (remove_repo | bool) else 'Kept at ' + install_path }}
+          Removed: {{ install_path }}
+          Removed: {{ launchd_plist_path }}
+          
+          To reinstall:
+            ansible-playbook install.yml
           
           ═══════════════════════════════════════════════════════════
