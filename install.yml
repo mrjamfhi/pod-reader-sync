@@ -16,7 +16,7 @@
     - name: Verify macOS
       ansible.builtin.fail:
         msg: "reader-sync only supports macOS (requires launchd)"
-      when: ansible_system != "Darwin"
+      when: ansible_facts['system'] != "Darwin"
 
     - name: Load default configuration
       ansible.builtin.include_vars:
@@ -30,7 +30,7 @@
       ansible.builtin.debug:
         msg: |
           Installing reader-sync
-          Platform: {{ ansible_system }} ({{ ansible_distribution | default('macOS') }})
+          Platform: {{ ansible_facts['system'] }} ({{ ansible_facts['distribution'] | default('macOS') }})
           Repository: {{ git_repo }}
           Branch: {{ git_branch }}
           Install path: {{ install_path }}
