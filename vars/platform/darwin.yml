@@ -4,7 +4,7 @@
 
 ---
 # launchd paths
-launchd_plist_dir: "{{ ansible_env.HOME }}/Library/LaunchAgents"
+launchd_plist_dir: "{{ ansible_facts['env']['HOME'] }}/Library/LaunchAgents"
 launchd_plist_path: "{{ launchd_plist_dir }}/{{ launchd_label }}.plist"
 
 # Homebrew paths (for jq, calibre)

@@ -13,7 +13,7 @@
     - name: Verify macOS
       ansible.builtin.fail:
         msg: "reader-sync only supports macOS"
-      when: ansible_system != "Darwin"
+      when: ansible_facts['system'] != "Darwin"
 
     - name: Load default configuration
       ansible.builtin.include_vars:
@@ -149,7 +149,7 @@
           reader-sync Status Report
           ═══════════════════════════════════════════════════════════
           
-          Platform:       {{ ansible_system }} ({{ ansible_distribution | default('macOS') }})
+          Platform:       {{ ansible_facts['system'] }} ({{ ansible_facts['distribution'] | default('macOS') }})
           
           Installation:
             Path:         {{ install_path }}
