@@ -144,13 +144,13 @@
     - name: Display status report
       ansible.builtin.debug:
         msg: |
-          
+
           ═══════════════════════════════════════════════════════════
           reader-sync Status Report
           ═══════════════════════════════════════════════════════════
-          
+
           Platform:       {{ ansible_facts['system'] }} ({{ ansible_facts['distribution'] | default('macOS') }})
-          
+
           Installation:
             Path:         {{ install_path }}
             Installed:    {{ '✅ Yes' if repo_stat.stat.exists else '❌ No' }}
@@ -158,7 +158,7 @@
             Branch:       {{ git_branch_current.stdout | default('unknown') }}
             Commit:       {{ git_commit.stdout | default('unknown') }}
           {% endif %}
-          
+
           Configuration:
           {% if repo_stat.stat.exists %}
             config.json:  {{ '✅ Present' if config_stat.stat.exists else '❌ Missing' }}
@@ -167,30 +167,30 @@
           {% else %}
             Not installed
           {% endif %}
-          
+
           launchd:
             Plist:        {{ '✅ Present' if plist_stat.stat.exists else '❌ Missing' }}
             Loaded:       {{ '✅ Yes' if launchd_loaded.rc == 0 else '❌ No' }}
-          
+
           Dependencies:
             jq:           {{ '✅ Installed' if jq_check.rc == 0 else '❌ Missing' }}
             Calibre:      {{ '✅ Installed' if calibre_check.rc == 0 else '⚠️  Missing (Kindle disabled)' }}
-          
+
           API Connectivity:
             Prod API:     {{ '✅ ' + prod_api_url if prod_api_check.status | default(0) == 200 else '❌ ' + prod_api_url }}
             Dev API:      {{ '✅ ' + dev_api_url if dev_api_check.status | default(0) == 200 else '❌ ' + dev_api_url }}
-          
+
           SMB Share:
             Enabled:      {{ '✅ Yes' if smb_enabled else '❌ No' }}
           {% if smb_enabled %}
             Mount point:  {{ smb_mount_point }}
             Mounted:      {{ '✅ Yes' if smb_check.stat.exists | default(false) else '❌ No' }}
           {% endif %}
-          
+
           ═══════════════════════════════════════════════════════════
-          
+
           Commands:
             Manual sync:  {{ install_path }}/reader-sync.sh --env=prod
             View logs:    tail -f {{ install_path }}/sync.log
-          
+
           ═══════════════════════════════════════════════════════════
