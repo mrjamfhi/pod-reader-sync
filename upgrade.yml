@@ -101,15 +101,15 @@
     - name: Upgrade complete
       ansible.builtin.debug:
         msg: |
-          
+
           ═══════════════════════════════════════════════════════════
           ✅ reader-sync upgraded successfully
           ═══════════════════════════════════════════════════════════
-          
+
           Previous: {{ current_commit.stdout }}
           Current:  {{ new_commit.stdout }}
-          
+
           launchd has been reloaded.
-          
+
           ═══════════════════════════════════════════════════════════
       when: upgrade_needed

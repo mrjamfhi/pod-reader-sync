@@ -51,16 +51,16 @@
     - name: Fail if uncommitted changes
       ansible.builtin.fail:
         msg: |
-          
+
           ═══════════════════════════════════════════════════════════
           ⚠️  Cannot uninstall: uncommitted changes detected
           ═══════════════════════════════════════════════════════════
-          
+
           Commit or stash your changes first:
             cd {{ install_path }}
             git status
             git stash  # or git commit
-          
+
           ═══════════════════════════════════════════════════════════
       when: git_status.stdout | length > 0
 
@@ -104,15 +104,15 @@
     - name: Uninstall complete
       ansible.builtin.debug:
         msg: |
-          
+
           ═══════════════════════════════════════════════════════════
           ✅ reader-sync uninstalled
           ═══════════════════════════════════════════════════════════
-          
+
           Removed: {{ install_path }}
           Removed: {{ launchd_plist_path }}
-          
+
           To reinstall:
             ansible-playbook install.yml
-          
+
           ═══════════════════════════════════════════════════════════

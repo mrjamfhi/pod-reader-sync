@@ -180,27 +180,27 @@
     - name: Installation complete
       ansible.builtin.debug:
         msg: |
-          
+
           ═══════════════════════════════════════════════════════════
           ✅ reader-sync installed successfully
           ═══════════════════════════════════════════════════════════
-          
+
           Install path:   {{ install_path }}
           launchd plist:  {{ launchd_plist_path }}
-          
+
           The script will run automatically when an e-reader is connected.
-          
+
           First-time setup:
             1. Connect your e-reader
             2. Trust the device by running manually:
                {{ install_path }}/reader-sync.sh --env=prod
-          
+
           Manual commands:
             {{ install_path }}/reader-sync.sh --env=prod   # Sync to production
             {{ install_path }}/reader-sync.sh --env=dev    # Sync to development
-          
+
           View logs:
             tail -f {{ install_path }}/sync.log
             tail -f {{ install_path }}/launchd-stdout.log
-          
+
           ═══════════════════════════════════════════════════════════
